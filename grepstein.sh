@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-QUERY="$@"
+QUERY="$*"
 PAGE=1
 DEPS=(pdftotext jq httpie)
 HEADERS=(
@@ -15,7 +15,7 @@ DEF='\e[0m'
 trap 'rm -rf /tmp/epstein_file.pdf' EXIT
 
 if [[ -z $QUERY ]]; then
-	echo -e "$RED Please provide a valid search term."
+	echo -e "$RED Please provide a valid search term. $DEF"
 	exit 1
 fi
 
@@ -38,7 +38,7 @@ fetch_results () {
 	URL="https://www.justice.gov/multimedia-search?keys=$QUERY&page=$PAGE"
 	DATA=$(http GET "$URL" "${HEADERS[@]}" | jq)
 	TOTAL_RECORDS=$(echo "$DATA" | jq '.hits.total.value')
-	PDF_URLS=($(echo "$DATA" | jq -r '.hits.hits[]._source.ORIGIN_FILE_URI' | sed 's/ /%20/g'))
+	mapfile -t PDF_URLS < <(echo "$DATA" | jq -r '.hits.hits[]._source.ORIGIN_FILE_URI' | sed 's/ /%20/g')
 	PDF_COUNT=${#PDF_URLS[@]}
 
 	#echo "$DATA"
@@ -60,31 +60,35 @@ ask_usrcmd () {
 			echo "-> Type NEXT to continue to next page"
 			echo "-> Type EXIT to exit"
 			echo -n "Your command : "
-			read USRCMD
+			read -r USRCMD
+
+			USRCMD="${USRCMD,,}"
 
 			case "$USRCMD" in
-				"open"|"OPEN")
+				open)
 					echo -ne "$GRN \nPlease write the index number of the file that you want to open : $DEF"
-					read INDEX
-					if [[ $INDEX -ge 0 && $INDEX -le 9 ]]; then
+					read -r INDEX
+					if [[ $INDEX -ge 0 && $INDEX -lt $PDF_COUNT ]]; then
 						http "${PDF_URLS[INDEX]}" "${HEADERS[@]}" > /tmp/epstein_file.pdf
 						pdftotext -layout /tmp/epstein_file.pdf - | less
 						rm /tmp/epstein_file.pdf
 						fetch_results
 					else
-						echo -e "$RED \nPlease Provide a valid index number"
+						echo -e "$RED \nPlease Provide a valid index number $DEF"
 					fi
 					;;
-				"next"|"NEXT")
+				next)
 					echo -e "$YEL \nProceding to next page... $DEF"
 					((PAGE++))
 					fetch_results
 					;;
-				"exit"|"EXIT")
+				exit)
+					echo -e "$YEL \nExiting... $DEF"
 					break
 					;;
 				*)
-					echo -e "$RED \nInvalid command, please enter a valid command."
+					echo -e "$RED \nInvalid command, please enter a valid command. $DEF"
+					;;
 			esac
 		done
 	fi
