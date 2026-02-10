@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-QUERY=$1
+QUERY="$@"
 PAGE=1
 DEPS=(pdftotext jq httpie)
 HEADERS=(
@@ -11,6 +11,14 @@ RED='\e[31m'
 YEL='\e[33m'
 GRN='\e[32m'
 DEF='\e[0m'
+
+trap 'rm -rf /tmp/epstein_file.pdf' EXIT
+
+if [[ -z $QUERY ]]; then
+	echo -e "$RED Please provide a valid search term."
+	exit 1
+fi
+
 
 dependency_check () {
 	echo -e "$YEL \nDependency control... $DEF"
@@ -35,10 +43,10 @@ fetch_results () {
 
 	#echo "$DATA"
 
-	echo -e "$GRN \nWe found $TOTAL_RECORDS result(s) for $QUERY on all pages. Page $PAGE only shows $PDF_COUNT result(s) $DEF"
+	echo -e "$GRN \nWe found $TOTAL_RECORDS result(s) for ${QUERY} on all pages. Page $PAGE only shows $PDF_COUNT result(s) $DEF"
 
 	if [[ "$PDF_COUNT" -gt 0 ]]; then
-		for i in "${!PDF_URLS[@]}"; do
+	for i in "${!PDF_URLS[@]}"; do
 			echo "$i - ${PDF_URLS[i]}"
 		done
 	fi
@@ -46,32 +54,35 @@ fetch_results () {
 
 ask_usrcmd () {
 	if [[ "$PDF_COUNT" -gt 0 ]]; then
-		echo -e "$GRN \nPlease select your action $DEF"
-		echo "-> Type OPEN to open a file"
-		echo "-> Type NEXT to continue to next page"
-		echo "-> Type EXIT to exit"
-		echo -n "Your command : "
-		read USRCMD
+		while true; do
+			echo -e "$GRN \nPlease select your action $DEF"
+			echo "-> Type OPEN to open a file"
+			echo "-> Type NEXT to continue to next page"
+			echo "-> Type EXIT to exit"
+			echo -n "Your command : "
+			read USRCMD
 
-		if [[ "$USRCMD" == "OPEN" || "$USRCMD" == "open" ]]; then
-			echo -ne "$GRN \nPlease write the index number of the file that you want to open : $DEF" 
-			read INDEX
-			http "${PDF_URLS[INDEX]}" "${HEADERS[@]}" > /tmp/epstein_file.pdf
-			pdftotext -layout /tmp/epstein_file.pdf - | less
-			rm /tmp/epstein_file.pdf
-			fetch_results
-			ask_usrcmd
-		elif [[ "$USRCMD" == "NEXT" || "$USRCMD" == "next" ]]; then
-			echo -e "$YEL \nProceding to next page... $DEF"
-			let "PAGE+=1"
-			fetch_results
-			ask_usrcmd
-		elif [[ "$USRCMD" == "EXIT" || "$USRCMD" == "exit" ]]; then
-			exit 1
-		else
-			echo -e "$RED \nInvalid command, please enter a valid command."
-			ask_usrcmd	
-		fi
+			case "$USRCMD" in
+				"open"|"OPEN")
+					echo -ne "$GRN \nPlease write the index number of the file that you want to open : $DEF"
+					read INDEX
+					http "${PDF_URLS[INDEX]}" "${HEADERS[@]}" > /tmp/epstein_file.pdf
+					pdftotext -layout /tmp/epstein_file.pdf - | less
+					rm /tmp/epstein_file.pdf
+					fetch_results
+					;;
+				"next"|"NEXT")
+					echo -e "$YEL \nProceding to next page... $DEF"
+					let "PAGE+=1"
+					fetch_results
+					;;
+				"exit"|"EXIT")
+					break
+					;;
+				*)
+					echo -e "$RED \nInvalid command, please enter a valid command."
+			esac
+		done
 	fi
 }
 
