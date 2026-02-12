@@ -43,12 +43,12 @@ chmod +x grepstein.sh
 
 ## Usage
 
-Normal Mode :
+Normal mode:
 ```bash
 ./grepstein.sh <search_term>
 ```
-OR (With FZF) :
 
+With FZF:
 ```bash
 ./grepstein.sh --fzf <search_term>
 ```
@@ -60,6 +60,33 @@ After listing the results, the script waits for a command:
 - `EXIT` → Exit the program  
 
 When opening a file, enter the index number shown in the list.
+
+## Docker Usage
+
+Docker installed users can run `grepstein.sh` without installing any dependencies.
+
+### Build image
+
+```bash
+docker build -t grepstein .
+```
+
+### Run
+
+Normal mode:
+```bash
+docker run --rm -it grepstein <search_term>
+```
+
+With FZF:
+```bash
+docker run --rm -it grepstein --fzf <search_term>
+```
+
+### Notes
+
+- `-it` is required for interactive usage (`less`, `fzf`)
+- Works on Linux, macOS, and Windows (Docker Desktop)
 
 ## Notes
 
