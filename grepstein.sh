@@ -39,7 +39,7 @@ dependency_check () {
 	echo -e "$YEL \nDependency control... $DEF"
 	local dep_status=0
 	for i in "${DEPS[@]}"; do
-		printf "Checking %s -> " "$i"
+		echo -n "Checking $i -> "
 		if command -v "$i" &>/dev/null; then echo "passed"; ((dep_status++)); else echo "failed"; fi
 	done
 
@@ -52,8 +52,8 @@ dependency_check () {
 fetch_results () {
 	URL="https://www.justice.gov/multimedia-search?keys=$QUERY&page=$PAGE"
 	DATA=$(http GET "$URL" "${HEADERS[@]}" | jq)
-	TOTAL_RECORDS=$(echo "$DATA" | jq '.hits.total.value')
-	mapfile -t PDF_URLS < <(echo "$DATA" | jq -r '.hits.hits[]._source.ORIGIN_FILE_URI' | sed 's/ /%20/g')
+	TOTAL_RECORDS=$(jq '.hits.total.value' <<< "$DATA")
+	mapfile -t PDF_URLS < <(jq -r '.hits.hits[]._source.ORIGIN_FILE_URI' <<< "$DATA" | sed 's/ /%20/g')
 	PDF_COUNT=${#PDF_URLS[@]}
 
 	[[ $1 == "--quiet" ]] && return 0
@@ -120,11 +120,12 @@ fi
 
 # fzf option
 
-command -v fzf &>/dev/null \
-|| { printf "fzf is not installed\n" 2>&1; exit 1; }
+if ! command -v fzf &>/dev/null; then echo "fzf is not installed" 2>&1; exit 1; fi
 
 TMP_TXT="/tmp/epstein_file.txt"
-export QUERY TMP_PDF TMP_TXT RED DEF
+DOJ_URL="https://www.justice.gov/epstein/files/"
+
+export DOJ_URL QUERY TMP_PDF TMP_TXT RED DEF
 
 get_file() {
 	local URL="$1"
@@ -141,12 +142,17 @@ get_file() {
 }
 
 preview() {
-	get_file "$1"
+	local file
+
+	file="${DOJ_URL}${1}"
+	file="${file// /%20}"
+
+	get_file "$file"
 	cat "$TMP_TXT"
 }
 
 get_all_urls() {
-	local page
+	local page old_page
 
 	while true
 	do
@@ -155,14 +161,17 @@ get_all_urls() {
 		page=$(
 			for URL in "${PDF_URLS[@]}"
 			do
-				printf "%s\n" "$URL"
+				URL="${URL#"$DOJ_URL"}"
+				URL="${URL//%20/ }"
+
+				echo "$URL"
 			done
 		)
 
 		[[ $page == "$old_page" || -z "$page" ]] && break
 		old_page="$page"
 
-		printf "%s\n" "$page"
+		echo "$page"
 		((PAGE++))
 	done
 }
