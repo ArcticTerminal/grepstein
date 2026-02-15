@@ -51,14 +51,6 @@ Normal mode:
 ./grepstein.sh <search_term>
 ```
 
-With FZF:
-
-<img width="1140" height="784" alt="Screenshot_20260212_225837" src="https://github.com/user-attachments/assets/75f3f08a-be32-440f-b5d3-3add3d5e85ef" />
-
-```bash
-./grepstein.sh --fzf <search_term>
-```
-
 After listing the results, the script waits for a command:
 
 - `OPEN` → Open a selected PDF in the terminal  
@@ -66,6 +58,15 @@ After listing the results, the script waits for a command:
 - `EXIT` → Exit the program  
 
 When opening a file, enter the index number shown in the list.
+
+
+With FZF:
+
+<img width="1140" height="784" alt="Screenshot_20260212_225837" src="https://github.com/user-attachments/assets/75f3f08a-be32-440f-b5d3-3add3d5e85ef" />
+
+```bash
+./grepstein.sh --fzf <search_term>
+```
 
 ## Docker Usage
 
